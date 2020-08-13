@@ -24,6 +24,11 @@ const displayBookImage = ($divTag, url) => {
   });
 };
 
+// Realtime Database の books から書籍を削除する
+const deleteBook = (bookId) => {
+  // TODO: books から該当の書籍データを削除
+};
+
 // 書籍の表示用のdiv（jQueryオブジェクト）を作って返す
 const createBookDiv = (bookId, bookData) => {
   // HTML内のテンプレートからコピーを作成する
@@ -39,6 +44,12 @@ const createBookDiv = (bookId, bookData) => {
 
   // id属性をセット
   $divTag.attr("id", `book-id-${bookId}`);
+
+  // 削除ボタンのイベントハンドラを登録
+  const $deleteButton = $divTag.find(".book-item__delete");
+  $deleteButton.on("click", () => {
+    deleteBook(bookId);
+  });
 
   return $divTag;
 };
@@ -62,7 +73,17 @@ const loadBookshelfView = () => {
   const booksRef = firebase.database().ref("books").orderByChild("createdAt");
 
   // 過去に登録したイベントハンドラを削除
+  booksRef.off("child_removed");
   booksRef.off("child_added");
+
+  // books の child_removedイベントハンドラを登録
+  // （データベースから書籍が削除されたときの処理）
+  booksRef.on("child_removed", (bookSnapshot) => {
+    const bookId = bookSnapshot.key;
+    const $book = $(`#book-id-${bookId}`);
+
+    // TODO: 書籍一覧画面から該当の書籍データを削除する
+  });
 
   // books の child_addedイベントハンドラを登録
   // （データベースに書籍が追加保存されたときの処理）
@@ -100,7 +121,7 @@ const showView = (id) => {
 // ログインフォームを初期状態に戻す
 const resetLoginForm = () => {
   $("#login__help").hide();
-  $("#login__submit-button").text("ログイン");
+  $("#login__submit-button").prop("disabled", false).text("ログイン");
 };
 
 // ログインした直後に呼ばれる
@@ -116,6 +137,7 @@ const onLogout = () => {
   const booksRef = firebase.database().ref("books");
 
   // 過去に登録したイベントハンドラを削除
+  booksRef.off("child_removed");
   booksRef.off("child_added");
 
   showView("login");
@@ -149,19 +171,24 @@ $("#login-form").on("submit", (e) => {
   const email = $("#login-email").val();
   const password = $("#login-password").val();
 
-  // TODO: ログインを試みる
+  // ログインを試みる
   firebase
     .auth()
     .signInWithEmailAndPassword(email, password)
     .then(() => {
-      console.log("ログインしました");
+      // ログインに成功したときの処理
+      console.log("ログインしました。");
+
+      // ログインフォームを初期状態に戻す
       resetLoginForm();
     })
     .catch((error) => {
+      // ログインに失敗したときの処理
       console.error("ログインエラー", error);
 
       $("#login__help").text("ログインに失敗しました。").show();
 
+      // ログインボタンを元に戻す
       $loginButton.text("ログイン");
     });
 });
@@ -186,14 +213,14 @@ $(".logout-button").on("click", () => {
 const resetAddBookModal = () => {
   $("#book-form")[0].reset();
   $("#add-book-image-label").text("");
-  $("#submit_add_book").text("保存する");
+  $("#submit_add_book").prop("disabled", false).text("保存する");
 };
 
 // 選択した表紙画像の、ファイル名を表示する
 $("#add-book-image").on("change", (e) => {
   const input = e.target;
-  const file = input.files[0];
   const $label = $("#add-book-image-label");
+  const file = input.files[0];
 
   if (file != null) {
     $label.text(file.name);
@@ -224,12 +251,13 @@ $("#book-form").on("submit", (e) => {
   const filename = file.name; // 画像ファイル名
   const bookImageLocation = `book-images/${filename}`; // 画像ファイルのアップロード先
 
-  // TODO: 書籍データを保存する
+  // 書籍データを保存する
   firebase
     .storage()
     .ref(bookImageLocation)
-    .put(file)
+    .put(file) // Storageへファイルアップロードを実行
     .then(() => {
+      // Storageへのアップロードに成功したら、Realtime Databaseに書籍データを保存する
       const bookData = {
         bookTitle,
         bookImageLocation,
@@ -238,10 +266,12 @@ $("#book-form").on("submit", (e) => {
       return firebase.database().ref("books").push(bookData);
     })
     .then(() => {
+      // 書籍一覧画面の書籍の登録モーダルを閉じて、初期状態に戻す
       $("#add-book-modal").modal("hide");
       resetAddBookModal();
     })
     .catch((error) => {
+      // 失敗したとき
       console.error("エラー", error);
       resetAddBookModal();
       $("#add-book__help").text("保存できませんでした。").fadeIn();
