@@ -27,6 +27,7 @@ const displayBookImage = ($divTag, url) => {
 // Realtime Database の books から書籍を削除する
 const deleteBook = (bookId) => {
   // TODO: books から該当の書籍データを削除
+  firebase.database().ref("books").child(bookId).remove();
 };
 
 // 書籍の表示用のdiv（jQueryオブジェクト）を作って返す
@@ -83,6 +84,7 @@ const loadBookshelfView = () => {
     const $book = $(`#book-id-${bookId}`);
 
     // TODO: 書籍一覧画面から該当の書籍データを削除する
+    $book.remove();
   });
 
   // books の child_addedイベントハンドラを登録
