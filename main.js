@@ -225,4 +225,25 @@ $("#book-form").on("submit", (e) => {
   const bookImageLocation = `book-images/${filename}`; // 画像ファイルのアップロード先
 
   // TODO: 書籍データを保存する
+  firebase
+    .storage()
+    .ref(bookImageLocation)
+    .put(file)
+    .then(() => {
+      const bookData = {
+        bookTitle,
+        bookImageLocation,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+      };
+      return firebase.database().ref("books").push(bookData);
+    })
+    .then(() => {
+      $("#add-book-modal").modal("hide");
+      resetAddBookModal();
+    })
+    .catch((error) => {
+      console.error("エラー", error);
+      resetAddBookModal();
+      $("#add-book__help").text("保存できませんでした。").fadeIn();
+    });
 });
